@@ -13,9 +13,11 @@ To import: download/pull this file, open simplicity studio v5, go to file>import
 After import delete the src file within the project if one is auto generated.
 
 See file this link for how to configure SSv5.
-Internal:
+
+Internal Team Doc:
 https://docs.google.com/document/d/1ju000s5zF7HjwI6fxCQPvtVg8PwAd9hC_2gIVASs3nM/edit
-External:
+
+External SI Doc:
 https://community.silabs.com/s/article/debugging-an-efm32-product-on-a-custom-board?language=en_US   
 
 Note: if you want to rename the project it is best to do it in the import menu before hitting finish. 
