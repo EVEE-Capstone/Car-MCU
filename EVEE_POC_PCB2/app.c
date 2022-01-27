@@ -34,18 +34,29 @@ void app_init(void)
  ******************************************************************************/
 void app_process_action(void)
 {
-  uint32_t speed = 50;
+  uint32_t speed = 35;
   uint32_t i;
+  uint32_t tmp;
   i = mfrc522_card(); // for testing
+  if(i == 0) return;
   if(i == 0x29ED965A){
       // start motor
-      timer_dc_set(TIMER0, CH0, speed);
-      timer_dc_set(TIMER0, CH1, 0);
+      timer_dc_set(TIMER0, CH1, 100);
+      timer_dc_set(TIMER0, CH0, 0);
+
+      timer_dc_set(TIMER2, CH0, 0);
+      timer_dc_set(TIMER2, CH1, speed);
   }
   else if(i == 0xE1AB731A){
       // stop motor
       timer_dc_set(TIMER0, CH0, 0);
       timer_dc_set(TIMER0, CH1, 0);
+
+      timer_dc_set(TIMER2, CH0, 0);
+      timer_dc_set(TIMER2, CH1, 0);
+  }
+  else{
+      tmp = i;
   }
 }
 
