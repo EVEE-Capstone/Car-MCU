@@ -1,0 +1,31 @@
+# Silicon Labs Project Configuration Tools: slcp, v0, Component selection file.
+project_name: EVEE_INT_BATTERY
+label: EVEE_INT_BATTERY
+description: |
+  This example project shows how to blink an LED in a bare-metal configuration.
+category: Example|Platform
+package: platform
+quality: production
+source:
+- {path: app.c}
+- {path: main.c}
+- {path: blink.c}
+tag: ['hardware:component:led:1+']
+include:
+- path: ''
+  file_list:
+  - {path: app.h}
+  - {path: blink.h}
+sdk: {id: gecko_sdk, version: 3.2.3}
+toolchain_settings: []
+component:
+- instance: [led0]
+  id: simple_led
+- {id: sl_system}
+- {id: device_init}
+- {id: sleeptimer}
+- {id: EFM32HG222F64}
+define:
+- {name: DEBUG_EFM}
+ui_hints: {}
+
