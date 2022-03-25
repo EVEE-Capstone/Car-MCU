@@ -1,14 +1,33 @@
 /*
  * motor.h
  *
- *  Created on: Jan 18, 2022
- *      Author: maxpettit
+ *  Created on: Feb 15, 2022
+ *      Author: nsaidy
  */
 
 #ifndef MOTOR_H_
 #define MOTOR_H_
 
 #include "timer.h"
+#include "gpio.h"
+
+/***************************************************************************//**
+ * Defines
+ ******************************************************************************/
+#define LEFT 0
+#define RIGHT 1
+#define DRIVE_TIMER     TIMER2
+
+/***************************************************************************//**
+ * Turn Function
+ ******************************************************************************/
+void left_turn(uint32_t speed);
+void right_turn(uint32_t speed);
+void straight(uint32_t speed);
+void move_forward(uint32_t speed);
+void stop_motor(void);
+void execute_cmd(char cmd);
 
 
 #endif /* MOTOR_H_ */
+

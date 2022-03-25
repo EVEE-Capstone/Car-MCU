@@ -326,11 +326,21 @@ void rxdatav_recevied(LEUART_TypeDef *leuart){
 void leuart_start(LEUART_TypeDef *leuart, char *string){
   while(leuart_tx_busy(leuart));
 
+  char tmp[30];
+
   CORE_DECLARE_IRQ_STATE;
   CORE_ENTER_CRITICAL();
   LEUART0_TX_STATE_MACHINE.sm_busy = true;
-  LEUART0_TX_STATE_MACHINE.string_len = strlen(string);
-  strcpy(LEUART0_TX_STATE_MACHINE.string, string);
+
+  tmp[0] = 0;
+  strcpy(tmp, "#");
+  strcat(tmp, string);
+  strcat(tmp, "!");
+
+  LEUART0_TX_STATE_MACHINE.string_len = strlen(tmp);
+  strcpy(LEUART0_TX_STATE_MACHINE.string, tmp);
+
+
   LEUART0_TX_STATE_MACHINE.curr_state = configure;
   LEUART0_TX_STATE_MACHINE.counter = 0;
   LEUART0_TX_STATE_MACHINE.leuart = leuart;

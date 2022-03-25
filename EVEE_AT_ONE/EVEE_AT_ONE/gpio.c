@@ -45,3 +45,15 @@ void gpio_init(void){
   // led toggle
   GPIO_PinModeSet(gpioPortC, 11u, gpioModePushPull, 0);
 }
+
+
+void charge_on(void){
+  GPIO_PinModeSet(gpioPortC, 9u, gpioModePushPull, 1);  // sw charge
+  GPIO_PinModeSet(gpioPortC, 10u, gpioModePushPull, 1); // sw deplete keep on?
+}
+
+
+void charge_off(void){
+  GPIO_PinModeSet(gpioPortC, 9u, gpioModePushPull, 0);  // sw charge
+  GPIO_PinModeSet(gpioPortC, 10u, gpioModePushPull, 1); // sw deplete
+}

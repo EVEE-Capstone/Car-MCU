@@ -20,32 +20,6 @@ void timeout_ctrl(void);
 
 /***************************************************************************//**
  * @brief
- *   Example timer delay code from Keith Graham. Not used
- *
- * @details
- *   Used as an example only.
- *
- ******************************************************************************/
-void timer_delay(uint32_t ms_delay){
-  uint32_t timer_clk_freq = CMU_ClockFreqGet(cmuClock_HFPER);
-  uint32_t delay_count = ms_delay *(timer_clk_freq/1000) / 1024;
-  CMU_ClockEnable(cmuClock_TIMER1, true);
-  TIMER_Init_TypeDef delay_counter_init = TIMER_INIT_DEFAULT;
-    delay_counter_init.oneShot = true;
-    delay_counter_init.enable = false;
-    delay_counter_init.mode = timerModeDown;
-    delay_counter_init.prescale = timerPrescale1024;
-    delay_counter_init.debugRun = false;
-  TIMER_Init(TIMER1, &delay_counter_init);
-  TIMER0->CNT = delay_count;
-  TIMER_Enable(TIMER1, true);
-  while (TIMER1->CNT != 00);
-  TIMER_Enable(TIMER1, false);
-  CMU_ClockEnable(cmuClock_TIMER1, false);
-}
-
-/***************************************************************************//**
- * @brief
  *   Sets up specified timer in pwm mode
  *
  * @details
@@ -206,6 +180,10 @@ void timeout_open(TIMER_TypeDef *timer){
 }
 
 
+/***************************************************************************//**
+ * TIMER0 IRQ used for 4 second periodic timer
+ *
+ ******************************************************************************/
 void TIMER0_IRQHandler(void){
   uint32_t int_flag;
   int_flag = TIMER0->IF & TIMER0->IEN;
@@ -217,6 +195,10 @@ void TIMER0_IRQHandler(void){
 }
 
 
+/***************************************************************************//**
+ * TIMER1 IRQ used for NFC timeout
+ *
+ ******************************************************************************/
 void TIMER1_IRQHandler(void){
   uint32_t int_flag;
   int_flag = TIMER1->IF & TIMER1->IEN;
@@ -227,11 +209,18 @@ void TIMER1_IRQHandler(void){
   }
 }
 
-
+/***************************************************************************//**
+ * NFC TIMEOUT HANDLER
+ *
+ ******************************************************************************/
 void timeout_ctrl(void){
   GPIO_PinOutSet(gpioPortC, 11u);
 }
 
+/***************************************************************************//**
+ * Reset the NFC Timeout counter
+ *
+ ******************************************************************************/
 void timeout_reset(void){
   if(!(TIMER1->STATUS & TIMER_STATUS_RUNNING)){
       timer_start(TIMER1, true);
@@ -241,11 +230,19 @@ void timeout_reset(void){
   }
 }
 
+/***************************************************************************//**
+ * CHECK if 4 second timer gone off
+ *
+ ******************************************************************************/
 uint32_t get_timer_flag(TIMER_TypeDef *timer){
   if(timer == TIMER0) return TIMER0_FLAG;
   else return 0;
 }
 
+/***************************************************************************//**
+ * RESET 4 second timer flag
+ *
+ ******************************************************************************/
 void clear_timer_flag(TIMER_TypeDef *timer){
   if(timer == TIMER0) TIMER0_FLAG = 0;
   else return;

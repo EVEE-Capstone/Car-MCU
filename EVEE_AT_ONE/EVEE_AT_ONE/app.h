@@ -25,6 +25,12 @@
 #include "mfrc522.h"
 #include "max17043.h"
 #include "leuart.h"
+#include "path.h"
+#include "motor.h"
+
+#include <stdio.h>
+
+#define BATTERY_THRS    20
 
 /***************************************************************************//**
  * Initialize application.
@@ -35,7 +41,7 @@ void app_init(void);
  * App ticking function.
  ******************************************************************************/
 void app_process_action(void);
-
+void app_send_battery(void);
 void app_pwm_open(void);
 void app_leuart_open(void);
 

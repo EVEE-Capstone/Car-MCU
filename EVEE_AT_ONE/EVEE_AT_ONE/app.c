@@ -27,10 +27,19 @@ void app_init(void)
   max17043_open();
 
   app_pwm_open();
-  app_leaurt_open();
+  app_leuart_open();
   timeout_open(TIMER1);
   mfrc522_open();
   mfrc522_config();
+
+  // For testing only
+  path_test();
+
+  // Initial behavior
+  app_send_battery();
+  execute_cmd('S');
+
+
 }
 
 /***************************************************************************//**
@@ -38,57 +47,104 @@ void app_init(void)
  ******************************************************************************/
 void app_process_action(void)
 {
-  uint32_t i, upper, lower;
-  uint32_t speed = 60;
-  float percent;
+  uint32_t id;
   char read[80];
-  char bat[12];
-  uint32_t tag;
+  char msg[20];
+  *read = 0;
 
+  uint32_t currID, targetID;
+  char currCMD, targetCMD;
+
+  // if TIMER0 has gone off we will get battery level and send it
   if(get_timer_flag(TIMER0)){
       clear_timer_flag(TIMER0);
-      i = max17043_soc();
-      if(i){
-          upper = i & 0xff00;
-          lower = i & 0x00ff;
-          percent = (upper >> 8) + (float)lower/256;
-          percent = percent - 1;
-      }
-
-      sprintf(bat, "%d", percent*100);
-      leuart_write(bat);
-  }
-
-  i = mfrc522_card();             // read nfc tag
-  if(i != 0) timeout_reset();
-  if(i == 0x8804c6d3){
-      // start motor
-      GPIO_PinOutSet(TURN_PORT, TURN_PIN0);
-      GPIO_PinOutClear(TURN_PORT, TURN_PIN1);
-
-      timer_dc_set(TIMER2, CH0, 0);
-      timer_dc_set(TIMER2, CH1, speed);
-  }
-  if(i == 0x8804b6d3){
-      // stop motor
-      GPIO_PinOutClear(TURN_PORT, TURN_PIN0);
-      GPIO_PinOutClear(TURN_PORT, TURN_PIN1);
-
-      timer_dc_set(TIMER2, CH0, 0);
-      timer_dc_set(TIMER2, CH1, 0);
+      app_send_battery();
   }
 
   if(leuart_newData()){
           leuart_read(read);
-
-          tag = atoi(read);
-
+          parse(read);
   }
+
+  // initially set to NO_ID and 0
+  get_currID(&currID, &currCMD);
+  get_target(&targetID, &targetCMD);
+
+
+  // Read NFC tag from MFRC522 Module
+  id = mfrc522_card();
+
+  // if we read any tag reset timeout
+  if(id != 0) timeout_reset();
+
+  // compare to path tags, target gets priority
+  if(id == targetID){
+      // execute the target command and pop from LL
+      execute_cmd(targetCMD);
+      popLL();
+  }
+  else if(id == currID){
+      // if we are currently stopped and have somewhere to go
+      // then start driving and stop charging
+      if((currCMD == 'H' || currCMD == 'Q') && targetID != NO_ID){
+          charge_off();
+          execute_cmd('S');
+      }
+  }
+  else if(id != 0) {
+      // send alert back to model with id read
+      sprintf(msg, "r%d", (int)id);
+      leuart_write(msg);
+      execute_cmd('S');
+      clear_after(NULL);  // clear list
+      // model calcs new path
+      // car slows down?
+  }
+
 }
 
+
+/***************************************************************************//**
+ * Send battery to PG
+ *
+ ******************************************************************************/
+void app_send_battery(void){
+  uint32_t i, upper, lower;
+  char bat[12];
+  float percent;
+
+  i = max17043_soc();
+  if(i){
+      upper = i & 0xff00;
+      lower = i & 0x00ff;
+      percent = (upper >> 8) + (float)lower/256;
+      percent = percent - 1;
+  }
+
+  // If low battery, let model know
+  // clear path if moving and get new
+  // 4 second period should prevent over clearing
+  if(percent < BATTERY_THRS){
+      leuart_write("LB");
+      // if the car is moving get a new path else do nothing
+      if(DRIVE_TIMER->CC[1].CCV != 0){
+          clear_after(NULL);  // clear path
+      }
+  }
+
+  sprintf(bat, "b%d", (int)(percent*100));
+  leuart_write(bat);
+}
+
+
+/***************************************************************************//**
+ * Open PWMs for motor timer and 4 second timer
+ *
+ ******************************************************************************/
 void app_pwm_open(void){
   APP_TIMER_PWM_TypeDef pwm_settings;
 
+  // Setup TIMER 2 for motor use
   pwm_settings.debugRun = true;
   pwm_settings.enable = false;
   pwm_settings.route_loc = TIMER2_LOC;
@@ -110,7 +166,7 @@ void app_pwm_open(void){
   timer_start(TIMER2, true);
 
 
-
+  // Setup TIMER 0 for 4 second tag-read timeout
   pwm_settings.debugRun = true;
   pwm_settings.enable = false;
   pwm_settings.freq = 0;
@@ -127,6 +183,11 @@ void app_pwm_open(void){
   timer_start(TIMER0, true);
 }
 
+
+/***************************************************************************//**
+ * Open LEUART
+ *
+ ******************************************************************************/
 void app_leuart_open(void){
   LEUART_OPEN_STRUCT leuart_init;
 
@@ -146,3 +207,5 @@ void app_leuart_open(void){
 
   leuart_open(LEUART0, &leuart_init);
 }
+
+

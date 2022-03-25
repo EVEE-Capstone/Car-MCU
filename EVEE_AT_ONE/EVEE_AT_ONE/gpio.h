@@ -17,5 +17,7 @@
 #define TURN_PIN1     1u
 
 void gpio_init(void);
+void charge_on(void);
+void charge_off(void);
 
 #endif /* GPIO_H_ */
