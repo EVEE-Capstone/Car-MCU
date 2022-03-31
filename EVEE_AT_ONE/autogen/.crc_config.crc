@@ -1,0 +1,5 @@
+#CRC Codes for initially generated config files -- do not modify!
+emlib_core_debug_config.h=171843933
+sl_memory_config.h=2120511174
+sl_simple_led_led0_config.h=943333748
+sl_sleeptimer_config.h=-1074849105
