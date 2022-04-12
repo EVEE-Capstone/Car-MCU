@@ -17,7 +17,7 @@
 #include "app.h"
 
 static uint32_t LOW_BATTERY;
-static uint32_t PREV_LOST;
+static uint32_t PREV_ID;
 static int LOST_FLAG;
 
 /***************************************************************************//**
@@ -25,28 +25,21 @@ static int LOST_FLAG;
  ******************************************************************************/
 void app_init(void)
 {
-
   blink_init();
   gpio_init();
-  for(int i = 0; i < 800000; i ++);
   max17043_open();
 
   app_pwm_open();
-  ble_usart_open();
+  app_leuart_open();
+  timeout_open(TIMER1);
   mfrc522_open();
   mfrc522_config();
-  initFIFO();
 
   LOW_BATTERY = 0;
   LOST_FLAG = 0;
-  PREV_LOST = 0;
 
   // For testing only
 //  path_test();
-
-  at_write("AT+CON0CEC80F08588");
-  while(!get_timer_flag(TIMER0));
-  clear_timer_flag(TIMER0);
 
   // Initial behavior
   app_send_battery();
@@ -56,7 +49,7 @@ void app_init(void)
   // ********
 
   execute_cmd('S');
-  timeout_open(TIMER1);
+
 
 }
 
@@ -65,10 +58,9 @@ void app_init(void)
  ******************************************************************************/
 void app_process_action(void)
 {
-
   uint32_t id;
   char read[200];
-  char msg[40];
+  char msg[20];
   *read = 0;
 
   uint32_t currID, targetID;
@@ -80,21 +72,15 @@ void app_process_action(void)
       app_send_battery();
   }
 
-  // if TIMER1 has gone off it has been 4 seconds since we saw a tag
   if(get_timer_flag(TIMER1)){
       clear_timer_flag(TIMER1);
-      execute_cmd('H');   // stop car
-      ble_write("TO");
+      execute_cmd('H');
+      leuart_write("TO");
   }
 
-  // if there is new data from model
-  if(ble_newData()){
-      ble_read(read);
+  if(leuart_newData()){
+      leuart_read(read);
       parse(read);
-
-      // when we get new info, do the first command?
-//      get_currID(&currID, &currCMD);    // experiment with this
-//      execute_cmd(currCMD);
   }
 
   // initially set to NO_ID and 0
@@ -108,23 +94,23 @@ void app_process_action(void)
   // if we read any tag reset timeout
   if(id != 0) timeout_reset();
 
-  if(id != 0 && id != PREV_LOST) LOST_FLAG = 0;
+  if(id != 0 && id != PREV_ID) LOST_FLAG = 0;
 
   // compare to path tags, target gets priority
   if(id == targetID){
       // execute the target command and pop from LL
       execute_cmd(targetCMD);
-      if(targetCMD == 'H' || targetCMD == 'Q') ble_write("AV");
-      popFIFO();
+      popLL();
+      if(targetCMD == 'H' || targetCMD == 'Q') leuart_write("AV");
       sprintf(msg, "I%d", (int)id);
-      ble_write(msg);
+      leuart_write(msg);
   }
   else if(id == currID){
       // if we are currently stopped and have somewhere to go
       // then start driving and stop charging
       if((currCMD == 'H' || currCMD == 'Q') && targetID != NO_ID && targetID != currID){
           charge_off();
-//          execute_cmd('W');
+          execute_cmd('S');
       }
   }
   else if(id != 0) {
@@ -132,13 +118,14 @@ void app_process_action(void)
       if(!LOST_FLAG){
           clear_all();  // clear list
           sprintf(msg, "r%d", (int)id);
-          ble_write(msg);
-          execute_cmd('W');
-          PREV_LOST = id;
+          leuart_write(msg);
+          execute_cmd('S');
+          PREV_ID = id;
           LOST_FLAG = 1;
       }
+      // model calcs new path
+      // car slows down?
   }
-
 
 }
 
@@ -164,7 +151,7 @@ void app_send_battery(void){
   // clear path if moving and get new
   // 4 second period should prevent over clearing
   if(percent < BAT_LOW_THRS){
-      ble_write("LB");
+      leuart_write("LB");
       // if the car is moving get a new path else do nothing
       if(DRIVE_TIMER->CC[1].CCV != 0){
           clear_all();  // clear path
@@ -174,11 +161,11 @@ void app_send_battery(void){
 
   if(LOW_BATTERY && percent >= BAT_HI_THRS){
       LOW_BATTERY = 0;
-      ble_write("SC");
+      leuart_write("SC");
   }
 
   sprintf(bat, "b%d", (int)(percent*100));
-  ble_write(bat);
+  leuart_write(bat);
 }
 
 

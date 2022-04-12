@@ -7,35 +7,30 @@
 
 #include "path.h"
 
-static node INST_ARR[INSTR_SIZE];
-static int read_ptr;
-static int write_ptr;
+static node *head = NULL;
+static node *tail = NULL;
 
 void push(uint32_t id, char cmd);
-static bool next_empty(void);
 
-/***************************************************************************//**
- *   Initialize fifo circular buffer
- ******************************************************************************/
-void initFIFO(void){
-  read_ptr = 0;
-  write_ptr = 0;
-}
 
 /***************************************************************************//**
  *   Parse input string into commands and ID, push to LL
  ******************************************************************************/
 void parse(char * str){
-  // might want to improve this with error detection
+
   char * token;
   char s[2] = ",";
   int i = 0;
+
   char cmd[2];
   uint32_t id;
 
+
   token = strtok(str, s);
 
+
   while( token != NULL ) {
+
       if(i % 2 == 1){
         *cmd = *token;
         push(id, cmd[0]);       // needs to go with latter of id and cmd read
@@ -47,6 +42,7 @@ void parse(char * str){
       }
       token = strtok(NULL, s);
    }
+
 }
 
 
@@ -54,13 +50,14 @@ void parse(char * str){
  *   Passes contents of head node
  ******************************************************************************/
 void get_currID(uint32_t * id, char * cmd){
-  if(is_empty()){
-        *id = NO_ID;
-        *cmd = 0;
-        return;
-    }
-  *id = INST_ARR[read_ptr].tagID;
-  *cmd = INST_ARR[read_ptr].cmd;
+  if(head->tagID){
+      *id = head->tagID;
+      *cmd = head->cmd;
+  }
+  else{
+      *id = NO_ID;
+      *cmd = 0;
+  }
 }
 
 
@@ -68,45 +65,28 @@ void get_currID(uint32_t * id, char * cmd){
  *   Passes contents of next node
  ******************************************************************************/
 void get_target(uint32_t * id, char * cmd){
-  if(is_empty()){
+  if(!head){
       *id = NO_ID;
       *cmd = 0;
       return;
   }
-  if(next_empty()){
+  if(!(head->next)){
       *id = NO_ID;
       *cmd = 0;
       return;
   }
 
-  *id = INST_ARR[(read_ptr + 1) % INSTR_SIZE].tagID;
-  *cmd = INST_ARR[(read_ptr + 1) % INSTR_SIZE].cmd;
+  *id = head->next->tagID;
+  *cmd = head->next->cmd;
 }
 
 
 
 /***************************************************************************//**
- *   Returns bool for arr is empty
+ *   Returns bool for LL is empty
  ******************************************************************************/
 bool is_empty(void) {
-  if(write_ptr == read_ptr) return true;
-  return false;
-}
-
-/***************************************************************************//**
- *   Returns bool for if next spot is empty
- ******************************************************************************/
-bool next_empty(void) {
-  if(write_ptr == read_ptr + 1) return true;
-  return false;
-}
-
-/***************************************************************************//**
- *   Returns bool for arr is full
- ******************************************************************************/
-bool is_full(void) {
-   if((write_ptr+1)%INSTR_SIZE == read_ptr) return true;
-   return false;
+   return head == NULL;
 }
 
 
@@ -114,13 +94,46 @@ bool is_full(void) {
  *   Push a node
  ******************************************************************************/
 void push(uint32_t id, char cmd){
-  if(is_full()) EFM_ASSERT(false);
+  node *new = (node*) malloc(sizeof(node));
 
-  INST_ARR[write_ptr].tagID = id;
-  INST_ARR[write_ptr].cmd = cmd;
+  new->cmd = cmd;
+  new->tagID = id;
+  new->next = NULL;
 
-  write_ptr = (write_ptr + 1) % INSTR_SIZE;
+  if(!head) head = new;
+  else tail->next = new;
 
+  tail = new;
+}
+
+/***************************************************************************//**
+ *   Delete after input node (including input node)
+ ******************************************************************************/
+void clear_after(node * start){
+  node *ptr = start;
+  node *next;
+
+   //start from the beginning
+   while(ptr != NULL) {
+      next = ptr->next;
+      free(ptr);
+      ptr = next;
+   }
+}
+
+/***************************************************************************//**
+ *   Delete after input node
+ ******************************************************************************/
+void clear_after_mod(node * start){
+  node *ptr = start->next;
+  node *next;
+
+   //start from the beginning
+   while(ptr != NULL) {
+      next = ptr->next;
+      free(ptr);
+      ptr = next;
+   }
 }
 
 
@@ -128,17 +141,56 @@ void push(uint32_t id, char cmd){
  *   Delete current linked list
  ******************************************************************************/
 void clear_all(void){
-  read_ptr = 0;
-  write_ptr = 0;
+  clear_after(head);
+  head->next = NULL;
 }
 
 /***************************************************************************//**
- *   Pop head from array
+ *   Pop head from LL
  ******************************************************************************/
-void popFIFO(void){
-  read_ptr = (read_ptr + 1) % INSTR_SIZE;
+void popLL(void){
+  node * tmp;
+  tmp = head;
+  head = head->next;
+  free(tmp);
 }
 
+
+/***************************************************************************//**
+ *   Function used to create a pointer at a wanted node
+ ******************************************************************************/
+node* find(uint32_t search_ID){
+  if(!head) return NULL; //Check to make sure that there is a linked list
+
+  node * temp = head;
+  while(temp!= NULL){
+    if (temp->tagID == search_ID) return temp; //If the pointer is pointing at the correct node (node with tagID matching the one we are looking for), return that node
+    temp = temp->next; //else continue down the list
+  }
+
+  return NULL; //Return NULL if we dont find the tagID in the list
+}
+
+/***************************************************************************//**
+ *   Making sure that the paths have the same starting point
+ ******************************************************************************/
+bool valid_recalc(node* currentPath, node* newPath){
+  if(currentPath->tagID != newPath->tagID || currentPath->cmd != newPath->cmd) return false; //If the cmd and the tagID at the front of both paths are not the same, return False
+  else return true; //Else they are the same and return true
+}
+
+/***************************************************************************//**
+ *   Function to remove outdated list chunk and append new one
+ ******************************************************************************/
+void append_newPath(node* newPath){
+  if(!head) return; //Check to make sure that there is a linked list
+  if(!valid_recalc(head, newPath)) return; //Make sure that the first nodes are the same, if they arent just return out without changing path
+
+  node* delQue = find(newPath->tagID); //Create a pointer to the node (in the old path) that has the same tagID as the first node in the new path
+  clear_after(delQue); //Delete all nodes that come after the delQue ptr
+
+  delQue->next = newPath->next; //Append the rest of the path to the end of our current list (newPath->next because delQue should be the same as the first node in newPath)
+}
 
 /***************************************************************************//**
  *   Path test
@@ -152,29 +204,17 @@ void path_test(void){
    char str[100];
    *str = 0;
 
-   x = 0x8804B4D3;
+   x = 0x8804AC58;
    c = 'L';
    sprintf(tmp, "%d,%c,", x,c);
    strcat(str, tmp);
 
-   x = 0x88048157;
-   c = 'S';
-   sprintf(tmp, "%d,%c,", x,c);
-   strcat(str, tmp);
-
-   x = 0x8804A6D0;
-   c = 'L';
-   sprintf(tmp, "%d,%c,", x,c);
-   strcat(str, tmp);
-
-   // 8dd3
-   x = 0x88048DD3;
+   x = 0x8804B458;
    c = 'R';
    sprintf(tmp, "%d,%c,", x,c);
    strcat(str, tmp);
 
-   // e0d0
-   x = 0x8804E0D0;
+   x = 0x88049CD1;
    c = 'H';
    sprintf(tmp, "%d,%c,", x,c);
    strcat(str, tmp);

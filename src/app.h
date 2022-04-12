@@ -27,7 +27,6 @@
 #include "leuart.h"
 #include "path.h"
 #include "motor.h"
-#include "ble_uart.h"
 
 #include <stdio.h>
 

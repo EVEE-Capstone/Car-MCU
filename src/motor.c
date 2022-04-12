@@ -76,7 +76,7 @@ void stop_motor(void) {
  *
  ******************************************************************************/
 void execute_cmd(char cmd){
-  uint32_t speed = 50;
+  uint32_t speed = 60;
 
   switch(cmd){
     case 'L':
@@ -103,11 +103,6 @@ void execute_cmd(char cmd){
     case 'S':
       // execute straight code
       straight(speed-20);
-      break;
-
-    case 'W':
-      // execute straight code
-      straight(speed-30);
       break;
 
     default:
