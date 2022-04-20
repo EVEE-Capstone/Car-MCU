@@ -10,6 +10,7 @@
 
 #include "em_cmu.h"
 #include "em_usart.h"
+#include <stdio.h>
 #include <string.h>
 
 
@@ -44,7 +45,7 @@ typedef enum{
 typedef struct {
   BLE_UART_STATES    curr_state;
   USART_TypeDef        *usart;
-  char                  string[200];
+  char                  string[320];
   uint32_t              string_len;
   uint32_t              counter;
   uint32_t              rxdataValid;

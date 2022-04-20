@@ -226,11 +226,9 @@ void timeout_ctrl(void){
  *
  ******************************************************************************/
 void timeout_reset(void){
+  TIMER1->CNT = 0;
   if(!(TIMER1->STATUS & TIMER_STATUS_RUNNING)){
       timer_start(TIMER1, true);
-  }
-  else{
-      TIMER1->CNT = 0;
   }
 }
 

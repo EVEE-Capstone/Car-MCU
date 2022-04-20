@@ -9,6 +9,8 @@ void rxdatav_recevied(USART_STATE_MACHINE_STRUCT *sm);
 void usart_open(USART_TypeDef *usart, USART_OPEN_STRUCT *usart_setup);
 void usart_start(USART_TypeDef *usart, char *string, uint32_t string_len,  bool frame);
 
+void ble_test(void);
+
 
 void ble_usart_open(void){
   USART_OPEN_STRUCT ble_usart;
@@ -267,6 +269,7 @@ void rxdatav_recevied(USART_STATE_MACHINE_STRUCT *sm){
       }
       break;
     default:
+//      ble_write("ER1");
       EFM_ASSERT(false);
       break;
     }
@@ -284,4 +287,16 @@ bool usart_tx_busy(USART_TypeDef *usart){
   else return false;
 }
 
+
+/***************************************************************************//**
+ * Stress Test BLE Comms
+ *
+ ******************************************************************************/
+void ble_test(void){
+    char msg[40];
+    for(int i = 0; i < 100; i++){
+        sprintf(msg, "r%d", (int)0x8804b0d0);
+        ble_write(msg);
+    }
+}
 

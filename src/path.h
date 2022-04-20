@@ -15,27 +15,24 @@
 
 // special IDs
 #define NO_ID       1
+#define INSTR_SIZE    64
 
 
 typedef struct _node{
    uint32_t tagID;
-   char cmd;
-   struct _node *next;
+   char cmd[2];
 } node;
 
 void path_test(void);
-
+bool is_full(void);
+bool is_empty(void);
 void parse(char * str);
 
 void get_currID(uint32_t * id, char * cmd);
 void get_target(uint32_t * id, char * cmd);
-void popLL(void);
-node* find(uint32_t search_ID);
-bool valid_recalc(node* currentPath, node* newPath);
-void append_newPath(node* newPath);
-void clear_after(node * start);
+void popFIFO(void);
 void clear_all(void);
-void clear_after_mod(node * start);
+void initFIFO(void);
 
 
 #endif /* PATH_H_ */

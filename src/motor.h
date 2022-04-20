@@ -18,6 +18,8 @@
 #define RIGHT 1
 #define DRIVE_TIMER     TIMER2
 
+#define SLOWCHAR 'Y'
+
 /***************************************************************************//**
  * Turn Function
  ******************************************************************************/
@@ -26,8 +28,9 @@ void right_turn(uint32_t speed);
 void straight(uint32_t speed);
 void move_forward(uint32_t speed);
 void stop_motor(void);
-void execute_cmd(char cmd);
-
+void execute_cmd(char cmd[2]);
+void reverse(void);
+void force(void);
 
 #endif /* MOTOR_H_ */
 

@@ -17,39 +17,50 @@
 #include "app.h"
 
 static uint32_t LOW_BATTERY;
-static uint32_t PREV_ID;
-static int LOST_FLAG;
+static uint32_t PREV_LOST;
+static int ARRIVED;
+static int SLOW_TO;
+static int FORCE_TO;
 
 /***************************************************************************//**
  * Initialize application.
  ******************************************************************************/
 void app_init(void)
 {
-  blink_init();
+//  blink_init();
   gpio_init();
+  for(int i = 0; i < 800000; i ++);
   max17043_open();
 
   app_pwm_open();
-  app_leuart_open();
-  timeout_open(TIMER1);
+  ble_usart_open();
   mfrc522_open();
   mfrc522_config();
+  initFIFO();
 
   LOW_BATTERY = 0;
-  LOST_FLAG = 0;
+  PREV_LOST = 0;
+  ARRIVED = 0;
+  SLOW_TO = 0;
+  FORCE_TO = 1;
 
   // For testing only
 //  path_test();
+//  ble_test();
+  at_write("AT+CON0CEC80F08588");
+  while(!get_timer_flag(TIMER0));
+  clear_timer_flag(TIMER0);
 
   // Initial behavior
   app_send_battery();
+
 
   // ********
   charge_off();
   // ********
 
-  execute_cmd('S');
-
+  execute_cmd("S");
+  timeout_open(TIMER1);
 
 }
 
@@ -58,13 +69,15 @@ void app_init(void)
  ******************************************************************************/
 void app_process_action(void)
 {
+
   uint32_t id;
-  char read[200];
-  char msg[20];
+  char read[300];
+  char msg[40];
   *read = 0;
 
   uint32_t currID, targetID;
-  char currCMD, targetCMD;
+  char currCMD[2], targetCMD[2];
+
 
   // if TIMER0 has gone off we will get battery level and send it
   if(get_timer_flag(TIMER0)){
@@ -72,61 +85,96 @@ void app_process_action(void)
       app_send_battery();
   }
 
-  if(get_timer_flag(TIMER1)){
-      clear_timer_flag(TIMER1);
-      execute_cmd('H');
-      leuart_write("TO");
-  }
-
-  if(leuart_newData()){
-      leuart_read(read);
-      parse(read);
+  // if there is new data from model
+  if(ble_newData()){
+      ble_read(read);
+      if(read[0] == 'q'){
+          if(read[1] == 'c') charge_on();
+          else charge_off();
+      }
+      else if(read[0] == '-' && read[1] == '2'){  // Path should start with '-2'
+          parse(read);
+          charge_off();
+          get_currID(&currID, currCMD);
+          execute_cmd(currCMD);
+          ARRIVED = 0;
+      }
   }
 
   // initially set to NO_ID and 0
-  get_currID(&currID, &currCMD);
-  get_target(&targetID, &targetCMD);
-
+  get_currID(&currID, currCMD);
+  get_target(&targetID, targetCMD);
 
   // Read NFC tag from MFRC522 Module
   id = mfrc522_card();
 
   // if we read any tag reset timeout
-  if(id != 0) timeout_reset();
-
-  if(id != 0 && id != PREV_ID) LOST_FLAG = 0;
+  if(id != 0){
+      timeout_reset();
+      SLOW_TO = 0;
+      FORCE_TO = 0;
+  }
 
   // compare to path tags, target gets priority
   if(id == targetID){
       // execute the target command and pop from LL
       execute_cmd(targetCMD);
-      popLL();
-      if(targetCMD == 'H' || targetCMD == 'Q') leuart_write("AV");
-      sprintf(msg, "I%d", (int)id);
-      leuart_write(msg);
-  }
-  else if(id == currID){
-      // if we are currently stopped and have somewhere to go
-      // then start driving and stop charging
-      if((currCMD == 'H' || currCMD == 'Q') && targetID != NO_ID && targetID != currID){
-          charge_off();
-          execute_cmd('S');
+      if(targetCMD[0] == 'H' && !ARRIVED){
+          ARRIVED = 1;
+
+          if(targetCMD[1] != 'I'){
+            // reverse to align code, improve later
+            for(int i  = 0; i < 10000; i++){
+                 reverse();
+                 if((i % 1000 == 900) && mfrc522_card() == targetID) break;
+             }
+            execute_cmd("H");
+          }
+          else execute_cmd("V");
+          sprintf(msg, "I%d", (int)id);
+          ble_write(msg);
+          ble_write("AV");
+      }
+      else{
+          popFIFO();
+          sprintf(msg, "I%d", (int)id);
+          ble_write(msg);
       }
   }
-  else if(id != 0) {
+  else if(id != 0 && id != currID) {
       // send alert back to model with id read
-      if(!LOST_FLAG){
-          clear_all();  // clear list
+      // if we are newly lost
+      if(id != PREV_LOST){
+//          clear_all();  // clear list
+          ARRIVED = 0;
+          execute_cmd("W");     // TODO: test between W and O
           sprintf(msg, "r%d", (int)id);
-          leuart_write(msg);
-          execute_cmd('S');
-          PREV_ID = id;
-          LOST_FLAG = 1;
+          ble_write(msg);
+          PREV_LOST = id;
       }
-      // model calcs new path
-      // car slows down?
   }
 
+  // if TIMER1 has gone off it has been 4 seconds since we saw a tag
+    if(get_timer_flag(TIMER1)){
+        clear_timer_flag(TIMER1);
+
+        // If we timeout while in slow cmd, give it the non-slow version of cmd
+        // if that still doesn't fix it alert
+        if(currCMD[0] == SLOWCHAR && !SLOW_TO){
+            SLOW_TO = 1;
+            execute_cmd("F"); // &currCMD[1]
+        }
+        else if(ARRIVED){} // if we are at our destination don't alert to timeout
+        else if(!FORCE_TO){
+            FORCE_TO = 1;
+            execute_cmd("F");
+        }
+        else{
+            execute_cmd("O");   // stop car
+            ble_write("TO");
+        }
+        timeout_reset();
+    }
 }
 
 
@@ -148,24 +196,19 @@ void app_send_battery(void){
   }
 
   // If low battery, let model know
-  // clear path if moving and get new
-  // 4 second period should prevent over clearing
-  if(percent < BAT_LOW_THRS){
-      leuart_write("LB");
-      // if the car is moving get a new path else do nothing
-      if(DRIVE_TIMER->CC[1].CCV != 0){
-          clear_all();  // clear path
-      }
-      LOW_BATTERY = 1;
-  }
+  // clear path if moving, do this only once per
+//  if(!LOW_BATTERY && percent < BAT_LOW_THRS){
+//      ble_write("LB");
+//      LOW_BATTERY = 1;
+//  }
 
-  if(LOW_BATTERY && percent >= BAT_HI_THRS){
-      LOW_BATTERY = 0;
-      leuart_write("SC");
-  }
+//  if(LOW_BATTERY && percent >= BAT_HI_THRS){
+//      LOW_BATTERY = 0;
+//      ble_write("SC");
+//  }
 
   sprintf(bat, "b%d", (int)(percent*100));
-  leuart_write(bat);
+  ble_write(bat);
 }
 
 
@@ -214,30 +257,4 @@ void app_pwm_open(void){
 
   timer_start(TIMER0, true);
 }
-
-
-/***************************************************************************//**
- * Open LEUART
- *
- ******************************************************************************/
-void app_leuart_open(void){
-  LEUART_OPEN_STRUCT leuart_init;
-
-  leuart_init.baudrate = 9600;
-  leuart_init.databits = leuartDatabits8;
-  leuart_init.enable = leuartEnable;
-  leuart_init.parity = leuartNoParity;
-  leuart_init.stopbits = leuartStopbits1;
-  leuart_init.rxblocken = true;
-  leuart_init.sfubrx = true;
-  leuart_init.startframe_en = true;
-  leuart_init.startframe = START_FRAME;
-  leuart_init.sigframe_en = true;
-  leuart_init.sigframe = SIG_FRAME;
-  leuart_init.refFreq = 0;
-
-
-  leuart_open(LEUART0, &leuart_init);
-}
-
 

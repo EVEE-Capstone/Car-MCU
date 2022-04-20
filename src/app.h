@@ -18,15 +18,15 @@
 #ifndef APP_H
 #define APP_H
 
-#include "blink.h"
 #include "em_gpio.h"
 #include "timer.h"
 #include "gpio.h"
 #include "mfrc522.h"
 #include "max17043.h"
-#include "leuart.h"
 #include "path.h"
 #include "motor.h"
+#include "ble_uart.h"
+#include "blink.h"
 
 #include <stdio.h>
 

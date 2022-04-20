@@ -8,7 +8,7 @@
 
 #include "usart.h"
 
-static SPI_STATE_MACHINE_STRUCT SPI0_STATE_MACHINE;
+//static SPI_STATE_MACHINE_STRUCT SPI0_STATE_MACHINE;
 static SPI_STATE_MACHINE_STRUCT SPI1_STATE_MACHINE;
 
 static void txbl_recevied(SPI_STATE_MACHINE_STRUCT *sm);
@@ -16,12 +16,12 @@ static void txc_recevied(SPI_STATE_MACHINE_STRUCT *sm);
 static void rxdatav_recevied(SPI_STATE_MACHINE_STRUCT *sm);
 
 void spi_open(USART_TypeDef *usart, SPI_OPEN_STRUCT *spi_setup){
-  if(usart == USART0){
-      CMU_ClockEnable(cmuClock_USART0, true);
-      NVIC_EnableIRQ(USART0_RX_IRQn);
-      NVIC_EnableIRQ(USART0_TX_IRQn);
-      SPI0_STATE_MACHINE.sm_busy = false;
-  }
+//  if(usart == USART0){
+//      CMU_ClockEnable(cmuClock_USART0, true);
+//      NVIC_EnableIRQ(USART0_RX_IRQn);
+//      NVIC_EnableIRQ(USART0_TX_IRQn);
+//      SPI0_STATE_MACHINE.sm_busy = false;
+//  }
   if(usart == USART1){
       CMU_ClockEnable(cmuClock_USART1, true);
       NVIC_EnableIRQ(USART1_RX_IRQn);
@@ -73,7 +73,7 @@ void spi_start(USART_TypeDef *usart, uint32_t addr, uint32_t write_data,
                uint32_t event, GPIO_Port_TypeDef port, unsigned int pin){
 
   SPI_STATE_MACHINE_STRUCT * sm_ptr;
-  if(usart == USART0) sm_ptr =  &SPI0_STATE_MACHINE;
+//  if(usart == USART0) sm_ptr =  &SPI0_STATE_MACHINE;
   if(usart == USART1) sm_ptr =  &SPI1_STATE_MACHINE;
 
   while(sm_ptr->sm_busy);
@@ -112,21 +112,21 @@ void spi_start(USART_TypeDef *usart, uint32_t addr, uint32_t write_data,
 
 
 bool spi_isbusy(USART_TypeDef *usart){
-  if(usart == USART0) return SPI0_STATE_MACHINE.sm_busy;
+//  if(usart == USART0) return SPI0_STATE_MACHINE.sm_busy;
   if(usart == USART1) return SPI1_STATE_MACHINE.sm_busy;
   return false;
 }
 
 
-void USART0_RX_IRQHandler(void){
-  uint32_t int_flag;
-  int_flag = USART0->IF & USART0->IEN;
-  USART0->IFC = int_flag;
-
-  if(int_flag & USART_IF_RXDATAV){
-    rxdatav_recevied(&SPI0_STATE_MACHINE);
-  }
-}
+//void USART0_RX_IRQHandler(void){
+//  uint32_t int_flag;
+//  int_flag = USART0->IF & USART0->IEN;
+//  USART0->IFC = int_flag;
+//
+//  if(int_flag & USART_IF_RXDATAV){
+//    rxdatav_recevied(&SPI0_STATE_MACHINE);
+//  }
+//}
 
 void USART1_RX_IRQHandler(void){
   uint32_t int_flag;
@@ -138,19 +138,21 @@ void USART1_RX_IRQHandler(void){
   }
 }
 
-void USART0_TX_IRQHandler(void){
-  uint32_t int_flag;
-  int_flag = USART0->IF & USART0->IEN;
-  USART0->IFC = int_flag;
+// Commented out for use in BLE File
 
-  if(int_flag & USART_IF_TXBL){
-    txbl_recevied(&SPI0_STATE_MACHINE);
-  }
-  if(int_flag & USART_IF_TXC){
-    EFM_ASSERT(!(USART0->IF & USART_IF_TXC));
-    txc_recevied(&SPI0_STATE_MACHINE);
-  }
-}
+//void USART0_TX_IRQHandler(void){
+//  uint32_t int_flag;
+//  int_flag = USART0->IF & USART0->IEN;
+//  USART0->IFC = int_flag;
+//
+//  if(int_flag & USART_IF_TXBL){
+//    txbl_recevied(&SPI0_STATE_MACHINE);
+//  }
+//  if(int_flag & USART_IF_TXC){
+//    EFM_ASSERT(!(USART0->IF & USART_IF_TXC));
+//    txc_recevied(&SPI0_STATE_MACHINE);
+//  }
+//}
 
 void USART1_TX_IRQHandler(void){
   uint32_t int_flag;
@@ -228,8 +230,8 @@ void txc_recevied(SPI_STATE_MACHINE_STRUCT *sm){
 
 
 void rxdatav_recevied(SPI_STATE_MACHINE_STRUCT *sm){
-//  CORE_DECLARE_IRQ_STATE;
-//  CORE_ENTER_CRITICAL();
+  CORE_DECLARE_IRQ_STATE;
+  CORE_ENTER_CRITICAL();
   uint32_t rx;
   rx = sm->usart->RXDATA;
 
@@ -262,6 +264,6 @@ void rxdatav_recevied(SPI_STATE_MACHINE_STRUCT *sm){
     break;
   }
 
-//  CORE_EXIT_CRITICAL();
+  CORE_EXIT_CRITICAL();
 }
 

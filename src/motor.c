@@ -19,8 +19,12 @@ void left_turn(uint32_t speed) {
 
   // drive rear motors
   timer_dc_set(DRIVE_TIMER, CH0, 0);     // CH0 backward
-  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
+//  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
+  for(int i = 0; i < (int)speed; i++){
+      timer_dc_set(DRIVE_TIMER, CH1, i); // CH1 forward
+      for(int j = 0; j < 10; j++);
   }
+}
 
 
 void right_turn(uint32_t speed) {
@@ -29,8 +33,12 @@ void right_turn(uint32_t speed) {
 
   // drive rear motors
   timer_dc_set(DRIVE_TIMER, CH0, 0);     // CH0 backward
-  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
+//  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
+  for(int i = 0; i < (int)speed; i++){
+      timer_dc_set(DRIVE_TIMER, CH1, i); // CH1 forward
+      for(int j = 0; j < 100; j++);
   }
+}
 
 void straight(uint32_t speed) {
   GPIO_PinOutClear(TURN_PORT, TURN_PIN0);     // CH0 right
@@ -38,7 +46,11 @@ void straight(uint32_t speed) {
 
   // drive rear motors
   timer_dc_set(DRIVE_TIMER, CH0, 0);     // CH0 backward
-  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
+//  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
+  for(int i = 0; i < (int)speed; i++){
+      timer_dc_set(DRIVE_TIMER, CH1, i); // CH1 forward
+      for(int j = 0; j < 100; j++);
+  }
   }
 
 
@@ -65,7 +77,6 @@ void stop_motor(void) {
   // stop motors
   GPIO_PinOutClear(TURN_PORT, TURN_PIN0);     // CH0 right
   GPIO_PinOutClear(TURN_PORT, TURN_PIN1);     // CH1 left
-
   timer_dc_set(DRIVE_TIMER, CH0, 0);
   timer_dc_set(DRIVE_TIMER, CH1, 0);
 }
@@ -75,39 +86,74 @@ void stop_motor(void) {
  * Control
  *
  ******************************************************************************/
-void execute_cmd(char cmd){
+void execute_cmd(char cmd[2]){
   uint32_t speed = 60;
+  char c = cmd[0];
 
-  switch(cmd){
+  if(cmd[0] == SLOWCHAR){
+      if(cmd[1] == 'S')
+        speed = 50;
+      else speed = 50;
+      c = cmd[1];
+  }
+
+  switch(c){
     case 'L':
       // turn left code
-      left_turn(speed);
+      left_turn(speed+7);
       break;
 
     case 'R':
       // turn right code
-      right_turn(speed);
+      right_turn(speed+7);
       break;
 
-    case 'Q':
-      // execute charge code
-      charge_on();
+    case 'O':     // Off
       stop_motor();
       break;
 
     case 'H':
       // execute halt code
       stop_motor();
+      charge_on();
       break;
 
     case 'S':
       // execute straight code
-      straight(speed-20);
+      straight(speed-28);
+      break;
+
+    case 'W':     // Where am i
+      straight(speed-25);
+      break;
+
+    case 'V':   // very slow
+      straight(15);
+      break;
+
+    case 'F':   // full forward force
+      force();
       break;
 
     default:
-      // probably just stop or drive slowly
       stop_motor();
       break;
   }
 }
+
+void reverse(void){
+  uint32_t speed = 40;
+  timer_dc_set(DRIVE_TIMER, CH0, speed);       // CH0 backward
+  timer_dc_set(DRIVE_TIMER, CH1, 0);   // CH1 forward
+}
+
+void force(void){
+  uint32_t speed = 65;
+  // do we want wheels facing straight?
+  GPIO_PinOutClear(TURN_PORT, TURN_PIN0);     // CH0 right
+  GPIO_PinOutClear(TURN_PORT, TURN_PIN1);     // CH1 left
+
+  timer_dc_set(DRIVE_TIMER, CH0, 0);       // CH0 backward
+  timer_dc_set(DRIVE_TIMER, CH1, speed);   // CH1 forward
+}
+

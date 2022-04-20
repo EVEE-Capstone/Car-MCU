@@ -16,6 +16,10 @@
 #define TURN_PIN0     0u
 #define TURN_PIN1     1u
 
+#define DRIVE_PORT    gpioPortA
+#define CH0_PIN       8u
+#define CH1_PIN       9u
+
 void gpio_init(void);
 void charge_on(void);
 void charge_off(void);
