@@ -36,7 +36,7 @@ void right_turn(uint32_t speed) {
 //  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
   for(int i = 0; i < (int)speed; i++){
       timer_dc_set(DRIVE_TIMER, CH1, i); // CH1 forward
-      for(int j = 0; j < 100; j++);
+      for(int j = 0; j < 150; j++);
   }
 }
 
@@ -49,7 +49,7 @@ void straight(uint32_t speed) {
 //  timer_dc_set(DRIVE_TIMER, CH1, speed); // CH1 forward
   for(int i = 0; i < (int)speed; i++){
       timer_dc_set(DRIVE_TIMER, CH1, i); // CH1 forward
-      for(int j = 0; j < 100; j++);
+      for(int j = 0; j < 150; j++);
   }
   }
 
@@ -87,13 +87,13 @@ void stop_motor(void) {
  *
  ******************************************************************************/
 void execute_cmd(char cmd[2]){
-  uint32_t speed = 60;
+  uint32_t speed = 60;      // was 60
   char c = cmd[0];
 
   if(cmd[0] == SLOWCHAR){
       if(cmd[1] == 'S')
-        speed = 50;
-      else speed = 50;
+        speed = 52;         // was 50
+      else speed = 55;      // was 50
       c = cmd[1];
   }
 
@@ -120,7 +120,7 @@ void execute_cmd(char cmd[2]){
 
     case 'S':
       // execute straight code
-      straight(speed-28);
+      straight(speed-25);
       break;
 
     case 'W':     // Where am i
@@ -128,7 +128,7 @@ void execute_cmd(char cmd[2]){
       break;
 
     case 'V':   // very slow
-      straight(15);
+      straight(28);           // was 15
       break;
 
     case 'F':   // full forward force

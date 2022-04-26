@@ -123,14 +123,14 @@ void app_process_action(void)
           ARRIVED = 1;
 
           if(targetCMD[1] != 'I'){
-            // reverse to align code, improve later
+            // reverse to align, improve later
             for(int i  = 0; i < 10000; i++){
                  reverse();
-                 if((i % 1000 == 900) && mfrc522_card() == targetID) break;
+                 if((i % 1000 == 900) && (mfrc522_card() == targetID)) break;
              }
             execute_cmd("H");
           }
-          else execute_cmd("V");
+          else execute_cmd("V");          // idle mode
           sprintf(msg, "I%d", (int)id);
           ble_write(msg);
           ble_write("AV");
@@ -141,7 +141,8 @@ void app_process_action(void)
           ble_write(msg);
       }
   }
-  else if(id != 0 && id != currID) {
+  // added to check if valid id first
+  else if(id != 0 && id != currID && (id & (0x88040000)) == (0x88040000)) {
       // send alert back to model with id read
       // if we are newly lost
       if(id != PREV_LOST){
