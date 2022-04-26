@@ -1,5 +1,3 @@
-## Subdirectories for each project.
-
 # EVEE_EXPO_CAR_2
 ### Built for EFM32HG222F64 MCU from Silicon Labs
 Final code used in engineering expo
